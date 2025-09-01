@@ -79,7 +79,7 @@ TEMPLATES = [
     },
 ]
 
-ASGI_APPLICATION = "website.asgi.application"
+ASGI_APPLICATION = "game.asgi.application"
 
 # Channels layer (Redis backend)
 CHANNEL_LAYERS = {
