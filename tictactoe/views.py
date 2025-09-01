@@ -14,31 +14,12 @@ class CreateRoomView(APIView):
 
 class AddPlayerView(APIView):
     def post(self, request, *args, **kwargs):
-        player_id = request.data.get("player_id")
-        code = request.data.get("code")
+        serializer = AddPlayerSerializer(data=request.data)
+        if serializer.is_valid():
+            room = serializer.save()
+            return Response(AddPlayerSerializer(room).data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        if not player_id or not code:
-            return Response(
-                {"error": "Both player_id and code are required"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        try:
-            room = Room.objects.get(code=code)
-        except Room.DoesNotExist:
-            return Response(
-                {"error": "Room not found"},
-                status=status.HTTP_404_NOT_FOUND,
-            )
-
-        if room.add_player(player_id):
-            serializer = RoomSerializer(room)
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        else:
-            return Response(
-                {"error": "Room is full"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
 
 # Delete
 class DeleteRoomView(APIView):
