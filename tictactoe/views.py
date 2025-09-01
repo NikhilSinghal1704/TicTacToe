@@ -1,28 +1,32 @@
-from django.shortcuts import render
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from .models import *
 from .serializers import *
 
-# Create
+
 class CreateRoomView(APIView):
-    def get(self, request, *args, **kwargs):
-        room = Room.objects.create()
+    """
+    Create a new room and assign the creator as host.
+    Expects JSON: {"player_id": "some-uuid"}
+    """
+    def post(self, request, *args, **kwargs):
+        player_id = request.data.get("player_id")
+        if not player_id:
+            return Response(
+                {"error": "player_id is required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        # Create room and set host
+        room = Room.objects.create(host_id=player_id, players=[player_id])
         serializer = RoomSerializer(room)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-class AddPlayerView(APIView):
-    def post(self, request, *args, **kwargs):
-        serializer = AddPlayerSerializer(data=request.data)
-        if serializer.is_valid():
-            room = serializer.save()
-            return Response(AddPlayerSerializer(room).data, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-
-# Delete
 class DeleteRoomView(APIView):
+    """
+    Delete a room by code
+    """
     def delete(self, request, code, *args, **kwargs):
         try:
             room = Room.objects.get(code=code)
