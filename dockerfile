@@ -19,7 +19,7 @@ COPY . .
 RUN python manage.py collectstatic --noinput
 
 # Run Gunicorn with Uvicorn worker
-CMD ["gunicorn", "myproject.asgi:application", \
+CMD ["gunicorn", "game.asgi:application", \
      "-k", "uvicorn.workers.UvicornWorker", \
      "--bind", "0.0.0.0:8000", \
      "--workers", "2", \
