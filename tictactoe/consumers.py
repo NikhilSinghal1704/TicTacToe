@@ -2,6 +2,8 @@ import json
 import random
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
+
+import game
 from .models import Room, Game
 
 import json, random
@@ -28,7 +30,7 @@ class TicTacToeConsumer(AsyncWebsocketConsumer):
     async def handle_resume_game(self, data):
         player_id = data.get("player_id")
         game = await self.get_active_game(self.room_code)
-    
+
         if game and (player_id == game.x_player or player_id == game.o_player):
             await self.send(json.dumps({
                 "type": "resume_game",
@@ -55,6 +57,11 @@ class TicTacToeConsumer(AsyncWebsocketConsumer):
     async def receive(self, text_data):
         data = json.loads(text_data)
         action = data.get("action")
+        
+        # Mark room as active
+        room = await self.get_room(self.room_code)
+        if room:
+            await database_sync_to_async(room.touch)()
 
         if action == "start_game":
             await self.handle_start_game()
@@ -112,9 +119,16 @@ class TicTacToeConsumer(AsyncWebsocketConsumer):
         if winner:
             game.finished = True
             game.winner = winner
+        elif all(cell != "" for cell in game.board):
+            game.finished = True
+            game.winner = "Draw"
 
         await database_sync_to_async(game.save)()
         await self.broadcast_game_update(game)
+        
+        # If game finished, broadcast history as well
+        if game.finished:
+            await self.broadcast_game_history()
 
     # -----------------------------
     # Broadcast helpers

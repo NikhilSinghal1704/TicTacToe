@@ -1,6 +1,7 @@
 from django.db import models
 from nanoid import generate
 import random
+from django.utils import timezone
 
 # custom numeric nanoid generator
 def generate_numeric_code():
@@ -21,6 +22,14 @@ class Room(models.Model):
 
     # Track which player is host
     host_id = models.CharField(max_length=50, blank=True, null=True)
+    
+    # track last activity
+    last_activity = models.DateTimeField(default=timezone.now)
+    
+    def touch(self):
+        """Update last_activity to now"""
+        self.last_activity = timezone.now()
+        self.save(update_fields=["last_activity"])
 
     def add_player(self, player_id: str) -> bool:
         """Try to add a player; returns True if successful, False if room full or already joined."""
