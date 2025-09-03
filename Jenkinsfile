@@ -1,82 +1,40 @@
 pipeline {
     agent any
     triggers {
-        githubPush()  // triggers on GitHub push
+        githubPush()
     }
     options {
-        skipDefaultCheckout()  // we handle git over SSH
+        skipDefaultCheckout()
     }
     stages {
-
-        stage('Git Fetch') {
+        stage('Checkout') {
             steps {
-                sshagent (credentials: ['casaos-ssh']) {
-                    sh '''
-                        ssh -tt -o StrictHostKeyChecking=no nikhil@192.168.1.104 "
-                        cd /mnt/Main/TicTacToe && git fetch --all
-                        "
-                    '''
-                }
+                checkout scm
             }
         }
 
-        stage('Git Reset & Pull') {
+        stage('Build Docker Image') {
             steps {
-                sshagent (credentials: ['casaos-ssh']) {
-                    sh '''
-                        ssh -tt -o StrictHostKeyChecking=no nikhil@192.168.1.104 "
-                        cd /mnt/Main/TicTacToe &&
-                        git reset --hard origin/main &&
-                        git pull
-                        "
-                    '''
-                }
+                sh '''
+                docker stop TicTacToe || true
+                docker rm TicTacToe || true
+                docker rmi tictactoe:latest || true
+                docker build -t tictactoe:latest .
+                '''
             }
         }
 
-        stage('Stop & Remove Old Container') {
+        stage('Run Docker Container') {
             steps {
-                sshagent (credentials: ['casaos-ssh']) {
-                    sh '''
-                        ssh -tt -o StrictHostKeyChecking=no nikhil@192.168.1.104 "
-                        docker stop TicTacToe || true &&
-                        docker rm TicTacToe || true &&
-                        docker rmi tictactoe:latest || true
-                        "
-                    '''
-                }
+                sh '''
+                docker run -d \
+                  -p 8504:8000 \
+                  --env-file /mnt/Main/TicTacToe/.env \
+                  --name TicTacToe \
+                  -v /mnt/Main/TicTacToe:/app \
+                  tictactoe:latest
+                '''
             }
         }
-
-        stage('Build New Docker Image') {
-            steps {
-                sshagent (credentials: ['casaos-ssh']) {
-                    sh '''
-                        ssh -tt -o StrictHostKeyChecking=no nikhil@192.168.1.104 "
-                        cd /mnt/Main/TicTacToe &&
-                        docker build -t tictactoe:latest .
-                        "
-                    '''
-                }
-            }
-        }
-
-        stage('Run New Container') {
-            steps {
-                sshagent (credentials: ['casaos-ssh']) {
-                    sh '''
-                        ssh -tt -o StrictHostKeyChecking=no nikhil@192.168.1.104 "
-                        docker run -d \
-                          -p 8504:8000 \
-                          --env-file /mnt/Main/TicTacToe/.env \
-                          --name TicTacToe \
-                          -v /mnt/Main/TicTacToe:/app \
-                          tictactoe:latest
-                        "
-                    '''
-                }
-            }
-        }
-
     }
 }
