@@ -16,16 +16,25 @@ class TicTacToeConsumer(AsyncWebsocketConsumer):
         self.room_code = self.scope["url_route"]["kwargs"]["room_code"]
         self.player_id = self.scope["query_string"].decode().split("player_id=")[-1]
         self.room_group_name = f"room_{self.room_code}"
-
+    
+        # Check if room exists before accepting
+        room = await self.get_room(self.room_code)
+        if not room:
+            # Send error reason to client before closing
+            await self.accept()
+            await self.send(json.dumps({
+                "error": "Invalid room code. Room does not exist."
+            }))
+            await self.close(code=4000)  # custom close code
+            return
+    
         # Join room group
         await self.channel_layer.group_add(self.room_group_name, self.channel_name)
         await self.accept()
-
+    
         # Add player to room
-        room = await self.get_room(self.room_code)
-        if room:
-            await self.add_player(room, self.player_id)
-            await self.broadcast_room_state(room)
+        await self.add_player(room, self.player_id)
+        await self.broadcast_room_state(room)
             
     async def handle_resume_game(self, data):
         player_id = data.get("player_id")
