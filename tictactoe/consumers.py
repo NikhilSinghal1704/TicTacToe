@@ -16,7 +16,7 @@ class TicTacToeConsumer(AsyncWebsocketConsumer):
         self.room_code = self.scope["url_route"]["kwargs"]["room_code"]
         self.player_id = self.scope["query_string"].decode().split("player_id=")[-1]
         self.room_group_name = f"room_{self.room_code}"
-    
+
         # Check if room exists before accepting
         room = await self.get_room(self.room_code)
         if not room:
@@ -27,11 +27,11 @@ class TicTacToeConsumer(AsyncWebsocketConsumer):
             }))
             await self.close(code=4000)  # custom close code
             return
-    
+
         # Join room group
         await self.channel_layer.group_add(self.room_group_name, self.channel_name)
         await self.accept()
-    
+
         # Add player to room
         await self.add_player(room, self.player_id)
         await self.broadcast_room_state(room)
@@ -175,20 +175,19 @@ class TicTacToeConsumer(AsyncWebsocketConsumer):
         )
 
     async def send_game_history(self):
-        room = await self.get_room(self.room_code)
-        if room:
-            finished_games = room.games.filter(finished=True)
-            if not finished_games.exists():
-                await self.send(json.dumps({"history": "No previous game log"}))
-                return
+        """Send all previous finished games in this room."""
+        finished_games = await self.get_finished_games(self.room_code)
 
+        if not finished_games:
+            await self.send(json.dumps({"history": "No previous games"}))
+        else:
             history = [
                 {
                     "x_player": g.x_player,
                     "o_player": g.o_player,
                     "board": g.board,
                     "finished": g.finished,
-                    "winner": g.winner
+                    "winner": g.winner,
                 }
                 for g in finished_games
             ]
@@ -250,4 +249,12 @@ class TicTacToeConsumer(AsyncWebsocketConsumer):
         room = Room.objects.get(code=room_code)
         games = room.games.filter(finished=False)
         return games.first() if games.exists() else None
+    
+    @database_sync_to_async
+    def get_finished_games(self, room_code):
+        try:
+            room = Room.objects.get(code=room_code)
+            return list(room.games.filter(finished=True))  # return Python list
+        except Room.DoesNotExist:
+            return []
 
