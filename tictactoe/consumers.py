@@ -24,6 +24,26 @@ class TicTacToeConsumer(AsyncWebsocketConsumer):
         if room:
             await self.add_player(room, self.player_id)
             await self.broadcast_room_state(room)
+            
+    async def handle_resume_game(self, data):
+        player_id = data.get("player_id")
+        game = await self.get_active_game(self.room_code)
+    
+        if game and (player_id == game.x_player or player_id == game.o_player):
+            await self.send(json.dumps({
+                "type": "resume_game",
+                "x_player": game.x_player,
+                "o_player": game.o_player,
+                "board": game.board,
+                "finished": game.finished,
+                "winner": game.winner,
+                "turn": "X" if sum(1 for cell in game.board if cell) % 2 == 0 else "O"
+            }))
+        else:
+            await self.send(json.dumps({
+                "type": "no_game_to_resume"
+            }))
+
 
     async def disconnect(self, close_code):
         room = await self.get_room(self.room_code)
@@ -42,6 +62,9 @@ class TicTacToeConsumer(AsyncWebsocketConsumer):
             await self.handle_make_move(data)
         elif action == "request_history":
             await self.send_game_history()
+        elif action == "resume_game":
+            await self.handle_resume_game(data)
+
 
     # -----------------------------
     # Game logic
