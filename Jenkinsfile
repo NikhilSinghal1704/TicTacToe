@@ -1,11 +1,5 @@
 pipeline {
     agent any
-    triggers {
-        githubPush()  // triggers on GitHub push
-    }
-    options {
-        skipDefaultCheckout()  // we handle git over SSH
-    }
     stages {
 
         stage('Git Fetch') {
