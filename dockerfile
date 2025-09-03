@@ -1,11 +1,16 @@
 FROM python:3.11-slim
 
+# Set environment variable for non-interactive tzdata install
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=Asia/Kolkata
+
 # Set workdir
 WORKDIR /app
 
 # Install system deps (only what's necessary for builds)
 RUN apt-get update && apt-get install -y \
     build-essential \
+    tzdata \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python deps
