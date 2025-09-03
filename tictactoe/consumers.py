@@ -128,7 +128,7 @@ class TicTacToeConsumer(AsyncWebsocketConsumer):
         
         # If game finished, broadcast history as well
         if game.finished:
-            await self.broadcast_game_history()
+            await self.send_game_history()
 
     # -----------------------------
     # Broadcast helpers
@@ -168,10 +168,20 @@ class TicTacToeConsumer(AsyncWebsocketConsumer):
     async def send_game_history(self):
         room = await self.get_room(self.room_code)
         if room:
+            finished_games = room.games.filter(finished=True)
+            if not finished_games.exists():
+                await self.send(json.dumps({"history": "No previous game log"}))
+                return
+
             history = [
-                {"x_player": g.x_player, "o_player": g.o_player, "board": g.board,
-                 "finished": g.finished, "winner": g.winner}
-                for g in room.games.all()
+                {
+                    "x_player": g.x_player,
+                    "o_player": g.o_player,
+                    "board": g.board,
+                    "finished": g.finished,
+                    "winner": g.winner
+                }
+                for g in finished_games
             ]
             await self.send(json.dumps({"history": history}))
 
